@@ -1,30 +1,31 @@
 from fastapi import FastAPI, UploadFile, File
 import keras_ocr
 from text_category_function import categorize_texts
-# from skimage.io import imsave
 from fastapi.responses import FileResponse
+import matplotlib.pyplot as plt
 
 app = FastAPI()
 pipeline = keras_ocr.pipeline.Pipeline()
 
 
 @app.post("/process_image")
-def get_image(image: UploadFile = File(...)):
-
+def process_image(image: UploadFile = File(...)):
+    
     img = keras_ocr.tools.read(image.file)
 
-    prediction_groups = pipeline.recognize([img])
+    images: list = [img]
+
+    prediction_groups = pipeline.recognize(images)
     prediction_object = [(text, boxes.tolist())
                          for text, boxes in prediction_groups[0]]
     only_text = [text[0] for text in prediction_object]
 
     categorized_text: list = categorize_texts(only_text)
 
-#     output_image = keras_ocr.tools.drawBoxes(
-#         image=img, boxes=prediction_groups[0])
-
-#     if output_image is not None:
-#         imsave('assets/output.jpg', output_image)
+    _, axs = plt.subplots(figsize=(10, 8))
+    keras_ocr.tools.drawAnnotations(image=img,predictions=prediction_groups[0],ax=axs)
+    axs.set_title('text detection output')
+    plt.savefig('image.png')
 
     return {
         'categorized_text': categorized_text
